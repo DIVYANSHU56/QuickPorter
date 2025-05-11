@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>QuickPorter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex justify-between h-16 items-center">
+        <div class="flex-shrink-0 text-white font-extrabold text-xl tracking-widest">
+          QuickPorter
+        </div>
+        <div class="hidden md:flex space-x-8">
+          <a href="index.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Home</a>
+          <a href="book.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Book</a>
+          <a href="dashboard.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Dashboard</a>
+          <a href="admin.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Admin</a>
+          <a href="porter.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Porter</a>
+          <a href="about.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">About</a>
+          <a href="contact.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Contact</a>
+          <a href="login.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Login</a>
+          <a href="signup.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <div class="container mx-auto mt-10 px-4">
+    <h2 class="text-3xl font-extrabold mb-6 text-gray-900">Book Porter Service</h2>
+    <form id="bookingForm" class="space-y-4 max-w-lg">
+      <input name="name" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Your Name" required />
+      <input name="email" type="email" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Email" required />
+      <input name="phone" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Phone Number" required />
+      <input name="pickup" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Pickup Location" required />
+      <input name="drop" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Drop Location" required />
+      <input name="date" type="date" class="w-full border border-gray-300 rounded-md px-3 py-2" required />
+      <input name="time" type="time" class="w-full border border-gray-300 rounded-md px-3 py-2" required />
+      <select name="itemType" class="w-full border border-gray-300 rounded-md px-3 py-2">
+        <option value="light">Light Items</option>
+        <option value="heavy">Heavy Items</option>
+        <option value="vehicle">Vehicle Moving</option>
+      </select>
+      <div>
+        <label for="estimatedPrice" class="block font-semibold mb-1">Estimated Price: </label>
+        <span id="estimatedPrice" class="text-gray-700">$0</span>
+      </div>
+      <div>
+        <label for="paymentMethod" class="block font-semibold mb-1">Payment Method</label>
+        <select id="paymentMethod" name="paymentMethod" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+          <option value="cod">Cash on Delivery (COD)</option>
+          <option value="razorpay">Razorpay</option>
+          <option value="stripe">Stripe</option>
+        </select>
+      </div>
+      <div>
+        <label for="feedback" class="block font-semibold mb-1">Feedback (optional)</label>
+        <textarea id="feedback" name="feedback" rows="3" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Your feedback"></textarea>
+      </div>
+      <button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-md shadow-md transition">Book Now</button>
+    </form>
+  </div>
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login to book a service');
+      window.location.href = 'login.html';
+    }
+
+    function calculatePrice(itemType) {
+      switch(itemType) {
+        case 'light': return 20;
+        case 'heavy': return 40;
+        case 'vehicle': return 100;
+        default: return 0;
+      }
+    }
+
+    const itemTypeSelect = document.querySelector('select[name="itemType"]');
+    const estimatedPriceSpan = document.getElementById('estimatedPrice');
+
+    function updateEstimatedPrice() {
+      const itemType = itemTypeSelect.value;
+      const price = calculatePrice(itemType);
+      estimatedPriceSpan.textContent = '$' + price;
+    }
+
+    itemTypeSelect.addEventListener('change', updateEstimatedPrice);
+    updateEstimatedPrice();
+
+    document.getElementById('bookingForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const formData = new FormData(this);
+      const data = {};
+      formData.forEach((value, key) => { data[key] = value; });
+
+      if(data.date && data.time) {
+        data.date = data.date + 'T' + data.time;
+        delete data.time;
+      }
+
+      fetch('http://localhost:3000/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Booking successful!');
+          this.reset();
+          updateEstimatedPrice();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(error => console.error('Error:', error));
+    });
+  </script>
+</body>
+</html>

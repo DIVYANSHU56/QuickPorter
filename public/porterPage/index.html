@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Porter Live Panel - QuickPorter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDx4HF-8apL2SimuHodBo1cKvQVlmpeYas&libraries=places"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <style>
+    #map {
+      height: 300px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .order-row {
+      cursor: pointer;
+    }
+    .order-row.selected {
+      background-color: #c7d2fe; /* Tailwind indigo-200 */
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex justify-between h-16 items-center">
+        <div class="flex-shrink-0 text-white font-extrabold text-xl tracking-widest">
+          QuickPorter
+        </div>
+        <div class="hidden md:flex space-x-8">
+          <a href="../index.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Home</a>
+          <a href="../porter.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Porter</a>
+          <a href="../dashboard.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Dashboard</a>
+          <a href="../login.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Logout</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mx-auto mt-10 px-4">
+    <h1 class="text-4xl font-extrabold mb-6 text-gray-900">Porter Live Panel</h1>
+
+    <div id="assignedOrdersSection" class="mb-6">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">Assigned Orders</h2>
+      <table class="table-auto w-full text-left border-collapse border border-gray-300">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="border border-gray-300 px-2 py-1">Name</th>
+            <th class="border border-gray-300 px-2 py-1">Pickup</th>
+            <th class="border border-gray-300 px-2 py-1">Drop</th>
+            <th class="border border-gray-300 px-2 py-1">Date</th>
+            <th class="border border-gray-300 px-2 py-1">Item Type</th>
+            <th class="border border-gray-300 px-2 py-1">Status</th>
+          </tr>
+        </thead>
+        <tbody id="ordersTableBody"></tbody>
+      </table>
+    </div>
+
+    <div id="orderDetailsSection" class="mb-6 hidden">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">Order Details</h2>
+      <div id="orderDetails" class="mb-4">
+        <p><strong>Name:</strong> <span id="orderName"></span></p>
+        <p><strong>Pickup:</strong> <span id="orderPickup"></span></p>
+        <p><strong>Drop:</strong> <span id="orderDrop"></span></p>
+        <p><strong>Date:</strong> <span id="orderDate"></span></p>
+        <p><strong>Item Type:</strong> <span id="orderItemType"></span></p>
+        <p><strong>Status:</strong> <span id="orderStatus"></span></p>
+      </div>
+      <button id="pickOrderBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-md shadow-md transition mr-4">Pick Order</button>
+      <button id="dropOrderBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-md shadow-md transition" disabled>Drop Order</button>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="paymentSection" class="hidden">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">Collect Payment</h2>
+      <p>Scan the UPI QR code below to pay:</p>
+      <canvas id="qrCodeCanvas" class="my-4"></canvas>
+      <button id="paymentDoneBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-md shadow-md transition">Payment Done</button>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login first');
+      window.location.href = '../login.html';
+    }
+
+    let currentUserId = null;
+    let currentBooking = null;
+    let map;
+    let marker;
+
+    function initMap(lat = 20.5937, lng = 78.9629) {
+      const center = { lat, lng };
+      map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 12,
+        center: center,
+      });
+      marker = new google.maps.Marker({
+        position: center,
+        map: map,
+        title: "Current Location",
+      });
+    }
+
+    async function fetchCurrentUser() {
+      try {
+        const res = await fetch('http://localhost:3000/api/users', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          currentUserId = payload.id;
+          fetchAssignedOrders();
+          initMap();
+          startLocationSharing();
+        } else {
+          alert('Error fetching user info: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error fetching user info: ' + err.message);
+      }
+    }
+
+    async function fetchAssignedOrders() {
+      try {
+        const res = await fetch(`http://localhost:3000/api/bookings/porter/${currentUserId}`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success && data.bookings.length > 0) {
+          populateOrdersTable(data.bookings);
+          selectOrder(data.bookings[0]);
+        } else {
+          alert('No assigned orders found');
+        }
+      } catch (err) {
+        alert('Error fetching assigned orders: ' + err.message);
+      }
+    }
+
+    function populateOrdersTable(bookings) {
+      const tbody = document.getElementById('ordersTableBody');
+      tbody.innerHTML = '';
+      bookings.forEach((booking, index) => {
+        const tr = document.createElement('tr');
+        tr.classList.add('order-row');
+        tr.dataset.index = index;
+        tr.innerHTML = `
+          <td class="border border-gray-300 px-2 py-1">${booking.name}</td>
+          <td class="border border-gray-300 px-2 py-1">${booking.pickup}</td>
+          <td class="border border-gray-300 px-2 py-1">${booking.drop}</td>
+          <td class="border border-gray-300 px-2 py-1">${new Date(booking.date).toLocaleString()}</td>
+          <td class="border border-gray-300 px-2 py-1">${booking.itemType}</td>
+          <td class="border border-gray-300 px-2 py-1">${booking.status}</td>
+        `;
+        tr.addEventListener('click', () => {
+          selectOrder(bookings[tr.dataset.index]);
+          highlightSelectedRow(tr);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function highlightSelectedRow(selectedRow) {
+      document.querySelectorAll('.order-row').forEach(row => {
+        row.classList.remove('selected');
+      });
+      selectedRow.classList.add('selected');
+    }
+
+    function selectOrder(order) {
+      currentBooking = order;
+      document.getElementById('orderDetailsSection').classList.remove('hidden');
+      document.getElementById('orderName').textContent = order.name;
+      document.getElementById('orderPickup').textContent = order.pickup;
+      document.getElementById('orderDrop').textContent = order.drop;
+      document.getElementById('orderDate').textContent = new Date(order.date).toLocaleString();
+      document.getElementById('orderItemType').textContent = order.itemType;
+      document.getElementById('orderStatus').textContent = order.status;
+      document.getElementById('dropOrderBtn').disabled = order.status !== 'assigned';
+      if (order.status === 'completed') {
+        document.getElementById('paymentSection').classList.remove('hidden');
+        generateQRCode();
+      } else {
+        document.getElementById('paymentSection').classList.add('hidden');
+      }
+    }
+
+    document.getElementById('pickOrderBtn').addEventListener('click', async () => {
+      if (!currentBooking) return;
+      try {
+        const res = await fetch(`http://localhost:3000/api/bookings/${currentBooking._id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ status: 'assigned' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentBooking.status = 'assigned';
+          selectOrder(currentBooking);
+          alert('Order picked successfully');
+          fetchAssignedOrders();
+        } else {
+          alert('Error picking order: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error picking order: ' + err.message);
+      }
+    });
+
+    document.getElementById('dropOrderBtn').addEventListener('click', async () => {
+      if (!currentBooking) return;
+      try {
+        const res = await fetch(`http://localhost:3000/api/bookings/${currentBooking._id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ status: 'completed' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentBooking.status = 'completed';
+          selectOrder(currentBooking);
+          alert('Order dropped successfully. Please collect payment.');
+          fetchAssignedOrders();
+        } else {
+          alert('Error dropping order: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error dropping order: ' + err.message);
+      }
+    });
+
+    function generateQRCode() {
+      const upiId = "9571266962@ptsbi"; // Replace with actual UPI ID or dynamic value
+      const name = currentBooking.name;
+      const amount = currentBooking.price;
+      const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(name)}&am=${amount}&cu=INR`;
+      const canvas = document.getElementById('qrCodeCanvas');
+      QRCode.toCanvas(canvas, upiUrl, function (error) {
+        if (error) console.error(error);
+      });
+    }
+
+    document.getElementById('paymentDoneBtn').addEventListener('click', async () => {
+      if (!currentBooking) return;
+      try {
+        const res = await fetch(`http://localhost:3000/api/bookings/${currentBooking._id}/payment`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ paymentStatus: 'paid' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Payment marked as done. Thank you!');
+          document.getElementById('paymentSection').classList.add('hidden');
+          fetchAssignedOrders();
+        } else {
+          alert('Error updating payment status: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error updating payment status: ' + err.message);
+      }
+    });
+
+    function startLocationSharing() {
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(async (position) => {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          if (map && marker) {
+            const pos = { lat: latitude, lng: longitude };
+            marker.setPosition(pos);
+            map.setCenter(pos);
+          }
+          if (currentBooking) {
+            try {
+              await fetch(`http://localhost:3000/api/bookings/${currentBooking._id}/location`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ latitude, longitude })
+              });
+            } catch (err) {
+              console.error('Error updating location:', err);
+            }
+          }
+        }, (error) => {
+          console.error('Error getting location:', error);
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
+      } else {
+        alert('Geolocation is not supported by this browser.');
+      }
+    }
+
+    fetchCurrentUser();
+
+    // WebSocket client for real-time updates
+    let ws;
+    function setupWebSocket() {
+      if (!currentUserId) return;
+      ws = new WebSocket('ws://localhost:3000');
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: 'register', porterId: currentUserId }));
+      };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'bookingUpdate') {
+            if (data.booking.assignedPorter === currentUserId) {
+              alert('New order assigned or updated!');
+              fetchAssignedOrders();
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing WebSocket message:', err);
+        }
+      };
+      ws.onclose = () => {
+        console.log('WebSocket connection closed, reconnecting in 5 seconds...');
+        setTimeout(setupWebSocket, 5000);
+      };
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        ws.close();
+      };
+    }
+
+    // Setup WebSocket after fetching current user
+    async function fetchCurrentUser() {
+      try {
+        const res = await fetch('http://localhost:3000/api/users', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          currentUserId = payload.id;
+          fetchAssignedOrders();
+          initMap();
+          startLocationSharing();
+          setupWebSocket();
+        } else {
+          alert('Error fetching user info: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error fetching user info: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

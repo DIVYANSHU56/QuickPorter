@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard - QuickPorter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .section {
+      margin-bottom: 40px;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex justify-between h-16 items-center">
+        <div class="flex-shrink-0 text-white font-extrabold text-xl tracking-widest">
+          QuickPorter
+        </div>
+        <div class="hidden md:flex space-x-8">
+          <a href="index.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Home</a>
+          <a href="book.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Book</a>
+          <a href="dashboard.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Dashboard</a>
+          <a href="admin.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Admin</a>
+          <a href="porter.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Porter</a>
+          <a href="about.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">About</a>
+          <a href="contact.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Contact</a>
+          <a href="login.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Login</a>
+          <a href="signup.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <div class="container mx-auto mt-10 px-4">
+    <h1 class="text-4xl font-extrabold mb-6 text-gray-900">Admin Dashboard</h1>
+
+    <div class="section" id="bookingsSection">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">All Bookings</h2>
+      <table id="bookingsTable" class="table-auto w-full text-left border-collapse border border-gray-300">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="border border-gray-300 px-2 py-1">Name</th>
+            <th class="border border-gray-300 px-2 py-1">Pickup</th>
+            <th class="border border-gray-300 px-2 py-1">Drop</th>
+            <th class="border border-gray-300 px-2 py-2">Date</th>
+            <th class="border border-gray-300 px-2 py-1">Item Type</th>
+            <th class="border border-gray-300 px-2 py-1">Status</th>
+            <th class="border border-gray-300 px-2 py-1">Assigned Porter</th>
+            <th class="border border-gray-300 px-2 py-1">Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="section" id="usersSection">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">User Management</h2>
+      <table id="usersTable" class="table-auto w-full text-left border-collapse border border-gray-300">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="border border-gray-300 px-2 py-1">Name</th>
+            <th class="border border-gray-300 px-2 py-1">Email</th>
+            <th class="border border-gray-300 px-2 py-1">Role</th>
+            <th class="border border-gray-300 px-2 py-1">Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="section" id="pricingSection">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">Pricing Control</h2>
+      <form id="pricingForm" class="mb-3">
+        <div class="mb-2">
+          <label for="pricePerKm" class="form-label">Price per km</label>
+          <input type="number" id="pricePerKm" class="form-control" min="0" step="0.01" required />
+        </div>
+        <div class="mb-2">
+          <label for="itemTypeSelect" class="form-label">Select Item/Vehicle Type</label>
+          <select id="itemTypeSelect" class="form-control" required>
+            <option value="light">Light Items</option>
+            <option value="heavy">Heavy Items</option>
+            <option value="vehicle">Vehicle Moving</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label for="priceByType" class="form-label">Price for Selected Type</label>
+          <input type="number" id="priceByType" class="form-control" min="0" step="0.01" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Update Pricing</button>
+      </form>
+    </div>
+
+    <div class="section" id="reportsSection">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">Reports</h2>
+      <button id="generateReportBtn" class="btn btn-info mb-3">Generate Report</button>
+      <pre id="reportOutput" class="bg-gray-100 p-4 border border-gray-300"></pre>
+    </div>
+
+    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+
+    // Bookings Section
+    async function fetchBookings() {
+      try {
+        const res = await fetch('http://localhost:3000/api/bookings', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          const tbody = document.querySelector('#bookingsTable tbody');
+          tbody.innerHTML = '';
+          data.bookings.forEach(booking => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${booking.name}</td>
+              <td>${booking.pickup}</td>
+              <td>${booking.drop}</td>
+              <td>${new Date(booking.date).toLocaleString()}</td>
+              <td>${booking.itemType}</td>
+              <td>
+                <select data-id="${booking._id}" class="status-select form-select form-select-sm">
+                  <option value="pending" ${booking.status === 'pending' ? 'selected' : ''}>Pending</option>
+                  <option value="assigned" ${booking.status === 'assigned' ? 'selected' : ''}>Assigned</option>
+                  <option value="completed" ${booking.status === 'completed' ? 'selected' : ''}>Completed</option>
+                  <option value="cancelled" ${booking.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                </select>
+              </td>
+              <td>
+                <select data-id="${booking._id}" class="porter-select form-select form-select-sm">
+                  <option value="">Select Porter</option>
+                </select>
+              </td>
+              <td>
+                <button data-id="${booking._id}" class="update-btn btn btn-sm btn-primary">Update</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+          addBookingUpdateListeners();
+          populatePorterDropdowns();
+        } else {
+          alert('Error fetching bookings: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error fetching bookings: ' + err.message);
+      }
+    }
+
+    async function fetchPorters() {
+      try {
+        const res = await fetch('http://localhost:3000/api/users?role=porter', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          return data.users;
+        } else {
+          alert('Error fetching porters: ' + data.message);
+          return [];
+        }
+      } catch (err) {
+        alert('Error fetching porters: ' + err.message);
+        return [];
+      }
+    }
+
+    async function populatePorterDropdowns() {
+      const porters = await fetchPorters();
+      document.querySelectorAll('.porter-select').forEach(select => {
+        const bookingId = select.getAttribute('data-id');
+        select.innerHTML = '<option value="">Select Porter</option>';
+        porters.forEach(porter => {
+          const option = document.createElement('option');
+          option.value = porter._id;
+          option.textContent = porter.name;
+          select.appendChild(option);
+        });
+        // Set selected value if assignedPorter exists
+        const bookingRow = select.closest('tr');
+        if (bookingRow) {
+          const assignedPorterId = bookingRow.querySelector('.porter-select').getAttribute('data-assigned-porter');
+          if (assignedPorterId) {
+            select.value = assignedPorterId;
+          }
+        }
+      });
+    }
+
+    function addBookingUpdateListeners() {
+      document.querySelectorAll('.update-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+          const id = button.getAttribute('data-id');
+          const status = document.querySelector(`.status-select[data-id="${id}"]`).value;
+          const assignedPorter = document.querySelector(`.porter-select[data-id="${id}"]`).value;
+          try {
+            const res = await fetch('http://localhost:3000/api/bookings/' + id, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+              },
+              body: JSON.stringify({ status, assignedPorter })
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert('Booking updated');
+              fetchBookings();
+            } else {
+              alert('Error updating booking: ' + data.message);
+            }
+          } catch (err) {
+            alert('Error updating booking');
+          }
+        });
+      });
+    }
+
+    // User Management Section
+    async function fetchUsers() {
+      try {
+        const res = await fetch('http://localhost:3000/api/users', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          const tbody = document.querySelector('#usersTable tbody');
+          tbody.innerHTML = '';
+          data.users.forEach(user => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><input type="text" data-id="${user._id}" class="user-name form-control form-control-sm" value="${user.name}" /></td>
+              <td><input type="email" data-id="${user._id}" class="user-email form-control form-control-sm" value="${user.email}" /></td>
+              <td>
+                <select data-id="${user._id}" class="user-role form-select form-select-sm">
+                  <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Customer</option>
+                  <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                  <option value="porter" ${user.role === 'porter' ? 'selected' : ''}>Porter</option>
+                </select>
+              </td>
+              <td>
+                <button data-id="${user._id}" class="user-update-btn btn btn-sm btn-primary">Update</button>
+                <button data-id="${user._id}" class="user-delete-btn btn btn-sm btn-danger">Delete</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+          addUserListeners();
+        } else {
+          alert('Error fetching users: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error fetching users: ' + err.message);
+      }
+    }
+
+    function addUserListeners() {
+      document.querySelectorAll('.user-update-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+          const id = button.getAttribute('data-id');
+          const name = document.querySelector(`.user-name[data-id="${id}"]`).value;
+          const email = document.querySelector(`.user-email[data-id="${id}"]`).value;
+          const role = document.querySelector(`.user-role[data-id="${id}"]`).value;
+          try {
+            const res = await fetch('http://localhost:3000/api/users/' + id, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+              },
+              body: JSON.stringify({ name, email, role })
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert('User updated');
+              fetchUsers();
+            } else {
+              alert('Error updating user: ' + data.message);
+            }
+          } catch (err) {
+            alert('Error updating user');
+          }
+        });
+      });
+
+      document.querySelectorAll('.user-delete-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+          const id = button.getAttribute('data-id');
+          if (!confirm('Are you sure you want to delete this user?')) return;
+          try {
+            const res = await fetch('http://localhost:3000/api/users/' + id, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': 'Bearer ' + token
+              }
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert('User deleted');
+              fetchUsers();
+            } else {
+              alert('Error deleting user: ' + data.message);
+            }
+          } catch (err) {
+            alert('Error deleting user');
+          }
+        });
+      });
+    }
+
+    // Pricing Control Section
+    async function fetchPricing() {
+      try {
+        const res = await fetch('http://localhost:3000/api/pricing', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('pricePerKm').value = data.pricing.pricePerKm || 0;
+          document.getElementById('priceLight').value = data.pricing.priceLight || 0;
+          document.getElementById('priceHeavy').value = data.pricing.priceHeavy || 0;
+          document.getElementById('priceVehicle').value = data.pricing.priceVehicle || 0;
+        } else {
+          alert('Error fetching pricing: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error fetching pricing: ' + err.message);
+      }
+    }
+
+    const pricingForm = document.getElementById('pricingForm');
+    const updateButton = pricingForm.querySelector('button[type="submit"]');
+    const itemTypeSelect = document.getElementById('itemTypeSelect');
+    const priceByTypeInput = document.getElementById('priceByType');
+
+    let currentPricesByType = {};
+
+    async function fetchPricing() {
+      try {
+        const res = await fetch('http://localhost:3000/api/pricing', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('pricePerKm').value = data.pricing.pricePerKm || 0;
+          currentPricesByType = data.pricing.pricesByType || {};
+          updatePriceByTypeInput();
+        } else {
+          alert('Error fetching pricing: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error fetching pricing: ' + err.message);
+      }
+    }
+
+    function updatePriceByTypeInput() {
+      const selectedType = itemTypeSelect.value;
+      priceByTypeInput.value = currentPricesByType[selectedType] || 0;
+    }
+
+    itemTypeSelect.addEventListener('change', () => {
+      updatePriceByTypeInput();
+    });
+
+    pricingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      updateButton.disabled = true;
+      updateButton.textContent = 'Updating...';
+
+      const pricePerKm = parseFloat(document.getElementById('pricePerKm').value);
+      const selectedType = itemTypeSelect.value;
+      const priceForType = parseFloat(priceByTypeInput.value);
+
+      const updatedPricesByType = { ...currentPricesByType, [selectedType]: priceForType };
+
+      try {
+        const res = await fetch('http://localhost:3000/api/pricing', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ pricePerKm, pricesByType: updatedPricesByType })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Pricing updated successfully');
+          currentPricesByType = updatedPricesByType;
+          updatePriceByTypeInput();
+        } else {
+          alert('Error updating pricing: ' + data.message);
+        }
+      } catch (err) {
+        alert('Network error while updating pricing');
+      } finally {
+        updateButton.disabled = false;
+        updateButton.textContent = 'Update Pricing';
+      }
+    });
+
+    // Initial fetches
+    fetchBookings();
+    fetchUsers();
+    fetchPricing();
+
+    // Reports Section
+    document.getElementById('generateReportBtn').addEventListener('click', async () => {
+      try {
+        const res = await fetch('http://localhost:3000/api/reports', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('reportOutput').textContent = JSON.stringify(data.report, null, 2);
+        } else {
+          alert('Error generating report: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error generating report');
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      window.location.href = 'login.html';
+    });
+
+    // Initial fetches
+    fetchBookings();
+    fetchUsers();
+    fetchPricing();
+  </script>
+</body>
+</html>

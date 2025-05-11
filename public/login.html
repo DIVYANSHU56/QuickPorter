@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login - QuickPorter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex justify-between h-16 items-center">
+        <div class="flex-shrink-0 text-white font-extrabold text-xl tracking-widest">
+          QuickPorter
+        </div>
+        <div class="hidden md:flex space-x-8">
+          <a href="index.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Home</a>
+          <a href="book.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Book</a>
+          <a href="dashboard.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Dashboard</a>
+          <a href="admin.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Admin</a>
+          <a href="porter.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Porter</a>
+          <a href="about.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">About</a>
+          <a href="contact.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Contact</a>
+          <a href="login.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Login</a>
+          <a href="signup.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <div class="container mx-auto mt-10 px-4">
+    <h2 class="text-3xl font-extrabold mb-6 text-gray-900">Login</h2>
+    <form id="loginForm" class="max-w-md space-y-4" novalidate>
+      <input type="email" id="email" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Email" required />
+      <input type="password" id="password" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="Password" required minlength="6" />
+      <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-md shadow-md transition">Login</button>
+    </form>
+    <p class="mt-4">Don't have an account? <a href="signup.html" class="text-indigo-600 hover:underline">Sign up here</a></p>
+  </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email) {
+        alert('Please enter your email.');
+        return;
+      }
+      if (!password || password.length < 6) {
+        alert('Please enter a valid password with at least 6 characters.');
+        return;
+      }
+      try {
+        const res = await fetch('http://localhost:3000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Login successful!');
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('role', data.user.role);
+          if (data.user.role === 'admin') {
+            window.location.href = 'dashboard.html';
+          } else if (data.user.role === 'porter') {
+            window.location.href = 'porter.html';
+          } else {
+            window.location.href = 'book.html';
+          }
+          this.reset();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error logging in');
+      }
+    });
+  </script>
+</body>
+</html>

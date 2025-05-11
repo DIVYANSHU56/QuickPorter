@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Contact Us - QuickPorter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex justify-between h-16 items-center">
+        <div class="flex-shrink-0 text-white font-extrabold text-xl tracking-widest">
+          QuickPorter
+        </div>
+        <div class="hidden md:flex space-x-8">
+          <a href="index.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Home</a>
+          <a href="book.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Book</a>
+          <a href="dashboard.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Dashboard</a>
+          <a href="admin.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Admin</a>
+          <a href="porter.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Porter</a>
+          <a href="about.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">About</a>
+          <a href="contact.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Contact</a>
+          <a href="login.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Login</a>
+          <a href="signup.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <div class="container mx-auto mt-10 px-4">
+    <h1 class="text-4xl font-extrabold mb-6 text-gray-900">Contact Us</h1>
+    <p class="text-gray-700 mb-4">If you have any questions or need assistance, please reach out to us using the information below or fill out the contact form.</p>
+    <ul class="list-disc list-inside text-gray-700 mb-6">
+      <li>Email: support@quickporter.com</li>
+      <li>Phone: +1 (555) 123-4567</li>
+      <li>Address: 123 Porter Street, Cityville, USA</li>
+    </ul>
+    <form id="contactForm" class="max-w-lg space-y-4">
+      <div>
+        <label for="name" class="block font-semibold mb-1">Name</label>
+        <input type="text" id="name" class="w-full border border-gray-300 rounded-md px-3 py-2" required />
+      </div>
+      <div>
+        <label for="email" class="block font-semibold mb-1">Email</label>
+        <input type="email" id="email" class="w-full border border-gray-300 rounded-md px-3 py-2" required />
+      </div>
+      <div>
+        <label for="message" class="block font-semibold mb-1">Message</label>
+        <textarea id="message" class="w-full border border-gray-300 rounded-md px-3 py-2" rows="4" required></textarea>
+      </div>
+      <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-md shadow-md transition">Send Message</button>
+    </form>
+    <a href="index.html" class="inline-block mt-6 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-6 py-3 rounded-md shadow-md transition">Back to Home</a>
+  </div>
+  <script>
+    document.getElementById('contactForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      alert('Thank you for contacting us! We will get back to you shortly.');
+      this.reset();
+    });
+  </script>
+</body>
+</html>

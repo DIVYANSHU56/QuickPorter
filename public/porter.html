@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Porter Panel - QuickPorter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .section {
+      margin-bottom: 40px;
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex justify-between h-16 items-center">
+        <div class="flex-shrink-0 text-white font-extrabold text-xl tracking-widest">
+          QuickPorter
+        </div>
+        <div class="hidden md:flex space-x-8">
+          <a href="index.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Home</a>
+          <a href="book.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Book</a>
+          <a href="dashboard.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Dashboard</a>
+          <a href="admin.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Admin</a>
+          <a href="porter.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Porter</a>
+          <a href="about.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">About</a>
+          <a href="contact.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Contact</a>
+          <a href="login.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Login</a>
+          <a href="signup.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <div class="container mx-auto mt-10 px-4">
+    <h1 class="text-4xl font-extrabold mb-6 text-gray-900">Porter Panel</h1>
+
+    <div class="section" id="availabilitySection">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">Update Availability</h2>
+      <div class="form-check form-switch mb-4">
+        <input class="form-check-input" type="checkbox" id="availabilityToggle" />
+        <label class="form-check-label" for="availabilityToggle">Available</label>
+      </div>
+      <button id="updateAvailabilityBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-md shadow-md transition">Update Availability</button>
+    </div>
+
+    <div class="section" id="assignedJobsSection">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">Assigned Jobs</h2>
+      <table id="assignedJobsTable" class="table-auto w-full text-left border-collapse border border-gray-300">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="border border-gray-300 px-2 py-1">Name</th>
+            <th class="border border-gray-300 px-2 py-1">Pickup</th>
+            <th class="border border-gray-300 px-2 py-1">Drop</th>
+            <th class="border border-gray-300 px-2 py-1">Date</th>
+            <th class="border border-gray-300 px-2 py-1">Item Type</th>
+            <th class="border border-gray-300 px-2 py-1">Status</th>
+            <th class="border border-gray-300 px-2 py-1">Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <button id="logoutBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-6 py-3 rounded-md shadow-md transition">Logout</button>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login first');
+      window.location.href = 'login.html';
+    }
+
+    let currentUserId = null;
+
+    async function fetchCurrentUser() {
+      try {
+        const res = await fetch('http://localhost:3000/api/users', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          currentUserId = payload.id;
+          const currentUser = data.users.find(u => u._id === currentUserId);
+          if (currentUser) {
+            document.getElementById('availabilityToggle').checked = currentUser.availability;
+          }
+          fetchAssignedJobs();
+        } else {
+          alert('Error fetching user info: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error fetching user info: ' + err.message);
+      }
+    }
+
+    async function fetchAssignedJobs() {
+      try {
+        const res = await fetch(`http://localhost:3000/api/bookings/porter/${currentUserId}`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          const tbody = document.querySelector('#assignedJobsTable tbody');
+          tbody.innerHTML = '';
+          data.bookings.forEach(booking => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${booking.name}</td>
+              <td>${booking.pickup}</td>
+              <td>${booking.drop}</td>
+              <td>${new Date(booking.date).toLocaleString()}</td>
+              <td>${booking.itemType}</td>
+              <td>${booking.status}</td>
+              <td>
+                ${booking.status !== 'completed' ? `<button data-id="${booking._id}" class="complete-btn bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded-md shadow-md transition">Mark Completed</button>` : ''}
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+          addCompleteListeners();
+        } else {
+          alert('Error fetching assigned jobs: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error fetching assigned jobs: ' + err.message);
+      }
+    }
+
+    function addCompleteListeners() {
+      document.querySelectorAll('.complete-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+          const id = button.getAttribute('data-id');
+          try {
+            const res = await fetch(`http://localhost:3000/api/bookings/${id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+              },
+              body: JSON.stringify({ status: 'completed' })
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert('Job marked as completed');
+              fetchAssignedJobs();
+            } else {
+              alert('Error updating job status: ' + data.message);
+            }
+          } catch (err) {
+            alert('Error updating job status');
+          }
+        });
+      });
+    }
+
+    document.getElementById('updateAvailabilityBtn').addEventListener('click', async () => {
+      const availability = document.getElementById('availabilityToggle').checked;
+      try {
+        const res = await fetch(`http://localhost:3000/api/users/${currentUserId}/availability`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ availability })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Availability updated');
+        } else {
+          alert('Error updating availability: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error updating availability');
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
+    });
+
+    fetchCurrentUser();
+  </script>
+</body>
+</html>

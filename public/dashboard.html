@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>User Dashboard - QuickPorter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <nav class="bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex justify-between h-16 items-center">
+        <div class="flex-shrink-0 text-white font-extrabold text-xl tracking-widest">
+          QuickPorter
+        </div>
+        <div class="hidden md:flex space-x-8">
+          <a href="index.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Home</a>
+          <a href="book.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Book</a>
+          <a href="dashboard.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Dashboard</a>
+          <a href="admin.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Admin</a>
+          <a href="porter.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Porter</a>
+          <a href="about.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">About</a>
+          <a href="contact.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Contact</a>
+          <a href="login.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Login</a>
+          <a href="signup.html" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-semibold">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <div class="container mx-auto mt-10 px-4">
+    <h2 class="text-3xl font-extrabold mb-6 text-gray-900">Your Bookings</h2>
+    <table id="bookingsTable" class="min-w-full table-auto border-collapse border border-gray-300 text-left">
+      <thead>
+        <tr class="bg-gray-200">
+          <th class="border border-gray-300 px-2 py-1">Pickup</th>
+          <th class="border border-gray-300 px-2 py-1">Drop</th>
+          <th class="border border-gray-300 px-2 py-1">Date</th>
+          <th class="border border-gray-300 px-2 py-1">Item Type</th>
+          <th class="border border-gray-300 px-2 py-1">Status</th>
+          <th class="border border-gray-300 px-2 py-1">Price</th>
+          <th class="border border-gray-300 px-2 py-1">Payment Status</th>
+          <th class="border border-gray-300 px-2 py-1">Rating</th>
+          <th class="border border-gray-300 px-2 py-1">Feedback</th>
+          <th class="border border-gray-300 px-2 py-1">Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button id="logoutBtn" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-semibold px-6 py-3 rounded-md shadow-md transition">Logout</button>
+  </div>
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login first');
+      window.location.href = 'login.html';
+    }
+
+    async function fetchBookings() {
+      try {
+        const res = await fetch('http://localhost:3000/api/bookings', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          const tbody = document.querySelector('#bookingsTable tbody');
+          tbody.innerHTML = '';
+          data.bookings.forEach(booking => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${booking.pickup}</td>
+              <td>${booking.drop}</td>
+              <td>${new Date(booking.date).toLocaleString()}</td>
+              <td>${booking.itemType}</td>
+              <td>${booking.status}</td>
+              <td>$${booking.price}</td>
+              <td>${booking.paymentStatus}</td>
+              <td>${booking.rating ? booking.rating : '-'}</td>
+              <td>${booking.feedback ? booking.feedback : '-'}</td>
+              <td>
+                ${booking.status === 'completed' ? `
+                  <button class="btn btn-sm btn-primary" onclick="showFeedbackForm('${booking._id}', ${booking.rating || 'null'}, '${booking.feedback || ''}')">Rate & Feedback</button>
+                ` : '-'}
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          alert('Error fetching bookings: ' + data.message);
+        }
+      } catch (err) {
+        alert('Error fetching bookings');
+      }
+    }
+
+    function showFeedbackForm(bookingId, currentRating, currentFeedback) {
+      const rating = prompt('Please rate the service (1-5):', currentRating || '');
+      if (rating === null) return;
+      if (rating < 1 || rating > 5) {
+        alert('Rating must be between 1 and 5');
+        return;
+      }
+      const feedback = prompt('Please provide your feedback:', currentFeedback || '');
+      if (feedback === null) return;
+
+      fetch(`http://localhost:3000/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ rating: Number(rating), feedback })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('Thank you for your feedback!');
+          fetchBookings();
+        } else {
+          alert('Error submitting feedback: ' + data.message);
+        }
+      })
+      .catch(err => {
+        alert('Error submitting feedback');
+      });
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
+    });
+
+    fetchBookings();
+  </script>
+</body>
+</html>

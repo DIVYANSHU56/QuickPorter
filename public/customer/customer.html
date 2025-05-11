@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Customer Booking - QuickPorter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDx4HF-8apL2SimuHodBo1cKvQVlmpeYas&libraries=places"></script>
+  <style>
+    #map {
+      height: 100%;
+      width: 100%;
+      border-radius: 0.5rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      filter: drop-shadow(0 0 0.75rem rgba(0,0,0,0.1));
+    }
+    body, html {
+      height: 100%;
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8fafc;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      display: flex;
+      gap: 2rem;
+      height: 80vh;
+    }
+    .map-container {
+      flex: 1;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      position: relative;
+    }
+    .form-container {
+      flex: 1;
+      background: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    h2 {
+      font-weight: 700;
+      font-size: 2rem;
+      color: #111827;
+      margin-bottom: 1.5rem;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-group svg {
+      position: absolute;
+      left: 10px;
+      width: 20px;
+      height: 20px;
+      fill: #6366f1;
+      pointer-events: none;
+    }
+    input, select {
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+      width: 100%;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.3);
+    }
+    label {
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 0.25rem;
+    }
+    #estimatedPrice {
+      font-weight: 700;
+      color: #4b5563;
+      font-size: 1.25rem;
+    }
+    #offers {
+      color: #10b981;
+      margin-left: 1rem;
+    }
+    button {
+      background-color: #6366f1;
+      color: white;
+      font-weight: 700;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 1.125rem;
+      transition: background-color 0.3s ease;
+      margin-top: 1rem;
+    }
+    button:hover {
+      background-color: #4f46e5;
+    }
+    nav {
+      background: linear-gradient(90deg, #4f46e5, #6366f1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    nav .logo {
+      font-weight: 800;
+      font-size: 1.5rem;
+      color: white;
+      letter-spacing: 0.1em;
+    }
+    nav a {
+      color: #e0e7ff;
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      transition: color 0.3s ease;
+    }
+    nav a:hover {
+      color: white;
+      background-color: rgba(255,255,255,0.1);
+      border-radius: 0.375rem;
+    }
+    nav .nav-links {
+      display: flex;
+      gap: 1rem;
+    }
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+        height: auto;
+      }
+      .map-container, .form-container {
+        height: 400px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="flex justify-between items-center px-8 py-4">
+    <div class="logo">QuickPorter</div>
+    <div class="nav-links">
+      <a href="../index.html">Home</a>
+      <a href="../book.html">Book</a>
+      <a href="../dashboard.html">Dashboard</a>
+      <a href="../admin.html">Admin</a>
+      <a href="../porter.html">Porter</a>
+      <a href="../about.html">About</a>
+      <a href="../contact.html">Contact</a>
+      <a href="../login.html">Login</a>
+      <a href="../signup.html">Sign Up</a>
+    </div>
+  </nav>
+  <div class="container">
+    <div class="map-container" id="map"></div>
+    <div class="form-container">
+      <h2>Book Your Ride</h2>
+      <form id="customerBookingForm">
+        <div class="input-group">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          <input id="pickup" name="pickup" placeholder="Pickup Location" required />
+        </div>
+        <div class="input-group">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          <input id="drop" name="drop" placeholder="Drop Location" required />
+        </div>
+        <input name="name" placeholder="Your Name" required />
+        <input name="email" type="email" placeholder="Email" required />
+        <input name="phone" placeholder="Phone Number" required />
+        <div class="flex gap-4">
+          <div class="flex-1">
+            <label for="date">Date</label>
+            <input name="date" type="date" required />
+          </div>
+          <div class="flex-1">
+            <label for="time">Time</label>
+            <input name="time" type="time" required />
+          </div>
+        </div>
+        <label for="itemType">Item Type</label>
+        <select name="itemType">
+          <option value="light">Light Items</option>
+          <option value="heavy">Heavy Items</option>
+          <option value="vehicle">Vehicle Moving</option>
+        </select>
+        <input name="vehicleDetails" placeholder="Vehicle Details (if applicable)" />
+        <div>
+          <label for="estimatedPrice">Estimated Price:</label>
+          <div id="estimatedPrice">₹0</div>
+        </div>
+        <div>
+          <label for="offers">Available Offers:</label>
+          <ul id="offers"></ul>
+        </div>
+        <label for="paymentMethod">Payment Method</label>
+        <select id="paymentMethod" name="paymentMethod" required>
+          <option value="upi">UPI</option>
+          <option value="paytm">Paytm</option>
+          <option value="googlepay">Google Pay</option>
+          <option value="card">Credit/Debit Card</option>
+          <option value="netbanking">Net Banking</option>
+        </select>
+        <button type="submit">Book Now</button>
+      </form>
+    </div>
+  </div>
+  <script>
+    let map;
+    let pickupMarker;
+    let dropMarker;
+    let directionsService;
+    let directionsRenderer;
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 20.5937, lng: 78.9629 },
+        zoom: 5,
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer();
+      directionsRenderer.setMap(map);
+
+      const pickupInput = document.getElementById("pickup");
+      const dropInput = document.getElementById("drop");
+
+      const pickupAutocomplete = new google.maps.places.Autocomplete(pickupInput);
+      const dropAutocomplete = new google.maps.places.Autocomplete(dropInput);
+
+      pickupAutocomplete.addListener("place_changed", () => {
+        const place = pickupAutocomplete.getPlace();
+        if (!place.geometry) return;
+        if (pickupMarker) pickupMarker.setMap(null);
+        pickupMarker = new google.maps.Marker({
+          position: place.geometry.location,
+          map: map,
+          label: "P",
+        });
+        map.panTo(place.geometry.location);
+        calculateAndDisplayRoute();
+      });
+
+      dropAutocomplete.addListener("place_changed", () => {
+        const place = dropAutocomplete.getPlace();
+        if (!place.geometry) return;
+        if (dropMarker) dropMarker.setMap(null);
+        dropMarker = new google.maps.Marker({
+          position: place.geometry.location,
+          map: map,
+          label: "D",
+        });
+        map.panTo(place.geometry.location);
+        calculateAndDisplayRoute();
+      });
+    }
+
+    function calculateAndDisplayRoute() {
+      if (!pickupMarker || !dropMarker) return;
+      directionsService.route(
+        {
+          origin: pickupMarker.getPosition(),
+          destination: dropMarker.getPosition(),
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (response, status) => {
+          if (status === "OK") {
+            directionsRenderer.setDirections(response);
+            const route = response.routes[0].legs[0];
+            const distanceKm = route.distance.value / 1000;
+            updateEstimatedPrice(distanceKm);
+          } else {
+            console.error("Directions request failed due to " + status);
+          }
+        }
+      );
+    }
+
+    let currentPricing = {
+      pricePerKm: 80,
+      pricesByType: {
+        light: 20,
+        heavy: 40,
+        vehicle: 100
+      }
+    };
+
+    async function fetchPricing() {
+      try {
+        const res = await fetch('http://localhost:3000/api/pricing');
+        const data = await res.json();
+        if (data.success) {
+          currentPricing = data.pricing;
+          calculateAndDisplayRoute();
+        }
+      } catch (err) {
+        console.error('Error fetching pricing:', err);
+      }
+    }
+
+    function updateEstimatedPrice(distanceKm) {
+      const itemType = document.querySelector('select[name="itemType"]').value;
+      const basePrice = currentPricing.pricesByType[itemType] || 0;
+      const pricePerKm = currentPricing.pricePerKm || 80;
+      const price = basePrice + distanceKm * pricePerKm;
+      document.getElementById("estimatedPrice").textContent = "₹" + price.toFixed(2);
+    }
+
+    function fetchOffers() {
+      const offers = [
+        "10% off on first booking",
+        "Free cancellation within 1 hour",
+        "Refer a friend and get ₹100 credit"
+      ];
+      const offersList = document.getElementById("offers");
+      offersList.innerHTML = "";
+      offers.forEach(offer => {
+        const li = document.createElement("li");
+        li.textContent = offer;
+        offersList.appendChild(li);
+      });
+    }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        initMap();
+        fetchOffers();
+        fetchPricing();
+
+        // Auto set date and time inputs to current date and time
+        const dateInput = document.querySelector('input[name="date"]');
+        const timeInput = document.querySelector('input[name="time"]');
+        if (dateInput) {
+          const today = new Date();
+          const yyyy = today.getFullYear();
+          const mm = String(today.getMonth() + 1).padStart(2, '0');
+          const dd = String(today.getDate()).padStart(2, '0');
+          dateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+        if (timeInput) {
+          const now = new Date();
+          const hh = String(now.getHours()).padStart(2, '0');
+          const min = String(now.getMinutes()).padStart(2, '0');
+          timeInput.value = `${hh}:${min}`;
+        }
+
+        const itemTypeSelect = document.querySelector('select[name="itemType"]');
+        itemTypeSelect.addEventListener("change", () => {
+          calculateAndDisplayRoute();
+        });
+
+        document.getElementById("customerBookingForm").addEventListener("submit", function(event) {
+          event.preventDefault();
+          const formData = new FormData(this);
+          const data = {};
+          formData.forEach((value, key) => { data[key] = value; });
+
+          if(data.date && data.time) {
+            data.date = data.date + 'T' + data.time;
+            delete data.time;
+          }
+
+          fetch('http://localhost:3000/api/bookings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify(data)
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              alert('Booking successful!');
+              this.reset();
+              document.getElementById("estimatedPrice").textContent = "₹0";
+            } else {
+              alert('Error: ' + data.message);
+            }
+          })
+          .catch(error => console.error('Error:', error));
+        });
+      });
+  </script>
+</body>
+</html>
